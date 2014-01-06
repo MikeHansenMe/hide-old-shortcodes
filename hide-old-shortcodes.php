@@ -159,24 +159,24 @@ function hos_escape_shortcode( $id, $key, $raw ) {
 	$post = get_post( $id, ARRAY_A );
 	$post['post_content'] = str_replace( $raw, '[' . $raw . ']', $post['post_content'] );
 	wp_update_post( $post );
-	$shortcode_log = get_option( 'hos_hidden_shortcodes', array() );
-	unset( $shortcode_log[ $key ] );
-	update_option( 'hos_hidden_shortcodes', $shortcode_log );
+	hos_remove_from_log( $key );
 }
 
 function hos_remove_shortcode( $id, $key, $raw ) {
 	$post = get_post( $id, ARRAY_A );
 	$post['post_content'] = str_replace( $raw, '', $post['post_content'] );
 	wp_update_post( $post );
-	$shortcode_log = get_option( 'hos_hidden_shortcodes', array() );
-	unset( $shortcode_log[ $key ] );
-	update_option( 'hos_hidden_shortcodes', $shortcode_log );
+	hos_remove_from_log( $key );
 }
 
 function hos_ignore_shortcode( $id, $key, $raw  ) {
 	$ignored_shortcodes = get_option( 'hos_ignored_shortcodes', array() );
 	$ignored_shortcodes[ $key ] = $raw;
 	update_option( 'hos_ignored_shortcodes',  $ignored_shortcodes );
+	hos_remove_from_log( $key );
+}
+
+function hos_remove_from_log( $key ) {
 	$shortcode_log = get_option( 'hos_hidden_shortcodes', array() );
 	unset( $shortcode_log[ $key ] );
 	update_option( 'hos_hidden_shortcodes', $shortcode_log );
