@@ -2,7 +2,7 @@
 /*
 Plugin Name: Hide Old Shortcodes
 Description: This plugin hides old/non registered shortcodes on the front end from users. It also helps you locate them so you can remove them.
-Version: 0.1
+Version: 0.2
 Author: Mike Hansen
 Author URI: http://mikehansen.me
 License: GPLv2 or later
@@ -50,9 +50,14 @@ function hos_replace_old_shortcodes( $content ) {
 	foreach ( $matches as $match ) {
 		$raw_match = $match;														//store the raw match to show usage
 		$match = $match[2];															//just the name of the shortcode
+		$ignored_shortcodes = get_option( 'hos_ignored_shortcodes', array() );
+		if( array_key_exists( 'hos_' . md5( $raw_match[0] . "-" . $post->ID ), $ignored_shortcodes ) AND $ignored_shortcodes[ 'hos_' . md5( $raw_match[0] . "-" . $post->ID ) ] == $raw_match[0] ) {
+				continue; //do not add the shortcode back to the log
+		}
 		if( ! array_key_exists( $match, $shortcode_tags ) ) { 						//check that it is not a active shortcode
 			$hidden_shortcodes = get_option( 'hos_hidden_shortcodes', array() );
 			if( ! array_key_exists( 'hos_' . md5( $raw_match[0] . "-" . $post->ID ), $hidden_shortcodes ) AND strpos( $raw_match[0],'[[') === false ) {	//check if we already logged this, if so save time and skip
+				
 				$hidden_shortcodes[ 'hos_' . md5( $raw_match[0] . "-" . $post->ID ) ] = array(
 					'shortcode' => $match,
 					'raw' => $raw_match[0],
@@ -81,19 +86,31 @@ function hos_page_content() {
 	
 	$hidden_shortcodes = get_option( 'hos_hidden_shortcodes', array() );
 	
-	if( isset( $_GET['action'] ) AND $_GET['action'] == 'display' AND isset( $hidden_shortcodes[ esc_attr( $_GET['key'] ) ] ) ) {
-		$display_shortcode = $hidden_shortcodes[ esc_attr( $_GET['key'] ) ];
-		hos_display_shortcode( $display_shortcode['post_id'], esc_attr( $_GET['key'] ), $display_shortcode['raw'] );
-		$message[] = array( 'type' => 'updated', 'message' => 'Shortcode ' . $display_shortcode['raw'] . ' will now show on the front.' );
-		unset( $hidden_shortcodes[ esc_attr( $_GET['key'] ) ] );
+	if( isset( $_GET['action'] ) AND isset( $hidden_shortcodes[ esc_attr( $_GET['key'] ) ] ) ) {
+		switch ( $_GET['action'] ) {
+			case 'escape':
+				$display_shortcode = $hidden_shortcodes[ esc_attr( $_GET['key'] ) ];
+				hos_escape_shortcode( $display_shortcode['post_id'], esc_attr( $_GET['key'] ), $display_shortcode['raw'] );
+				$message[] = array( 'type' => 'updated', 'message' => 'Shortcode ' . $display_shortcode['raw'] . ' will now show on the frontend.' );
+				unset( $hidden_shortcodes[ esc_attr( $_GET['key'] ) ] );
+				break;
+			
+			case 'remove':
+				$remove_shortcode = $hidden_shortcodes[ esc_attr( $_GET['key'] ) ];
+				hos_remove_shortcode( $remove_shortcode['post_id'], esc_attr( $_GET['key'] ), $remove_shortcode['raw'] );
+				$message[] = array( 'type' => 'updated', 'message' => 'Shortcode "' . $remove_shortcode['raw'] . '" has been removed.' );
+				unset( $hidden_shortcodes[ esc_attr( $_GET['key'] ) ] );
+				break;
+			
+			case 'ignore':
+				$ignore_shortcode = $hidden_shortcodes[ esc_attr( $_GET['key'] ) ];
+				hos_ignore_shortcode( $ignore_shortcode['post_id'], esc_attr( $_GET['key'] ), $ignore_shortcode['raw'] );
+				$message[] = array( 'type' => 'updated', 'message' => 'Shortcode "' . $ignore_shortcode['raw'] . '" will be ignored.' );
+				unset( $hidden_shortcodes[ esc_attr( $_GET['key'] ) ] );
+				break;
+		}
 	}
 
-	if( isset( $_GET['action'] ) AND $_GET['action'] == 'remove' AND isset( $hidden_shortcodes[ esc_attr( $_GET['key'] ) ] ) ) {
-		$remove_shortcode = $hidden_shortcodes[ esc_attr( $_GET['key'] ) ];
-		hos_remove_shortcode( $remove_shortcode['post_id'], esc_attr( $_GET['key'] ), $remove_shortcode['raw'] );
-		$message[] = array( 'type' => 'updated', 'message' => 'Shortcode "' . $remove_shortcode['raw'] . '" has been removed.' );
-		unset( $hidden_shortcodes[ esc_attr( $_GET['key'] ) ] );
-	}
 	?>
 	<div class="wrap">
 	<h2>Hide Old Shortcodes</h2>
@@ -120,7 +137,8 @@ function hos_page_content() {
 				<td>" . $hidden_shortcode_v['raw'] . "</td>
 				<td>
 					<a href='post.php?post=" . $hidden_shortcode_v['post_id'] . "&action=edit'>Edit " . $hidden_shortcode_v['post_type'] . "</a> |
-					<a href='tools.php?page=hide-old-shortcodes&action=display&key=" . $hidden_shortcode_k . "'>Allow</a> |
+					<a href='tools.php?page=hide-old-shortcodes&action=escape&key=" . $hidden_shortcode_k . "'>Escape/Allow</a> |
+					<a href='tools.php?page=hide-old-shortcodes&action=ignore&key=" . $hidden_shortcode_k . "'>Ignore</a> |
 					<a href='tools.php?page=hide-old-shortcodes&action=remove&key=" . $hidden_shortcode_k . "'>Remove</a>
 				</td>
 			</tr>";
@@ -133,17 +151,11 @@ function hos_page_content() {
 		</tr>
 
 	</table>
-	<div class="error">
-		<p>
-		Use of this plugin should be temporary since parsing content can be expensive without caching and cause your site to load slow. 
-		You should use this log to help locate and remove the shortcode if you no longer plan to use it.
-		</p>
-	</div>
 	</div>
 	<?php
 }
 
-function hos_display_shortcode( $id, $key, $raw ) {
+function hos_escape_shortcode( $id, $key, $raw ) {
 	$post = get_post( $id, ARRAY_A );
 	$post['post_content'] = str_replace( $raw, '[' . $raw . ']', $post['post_content'] );
 	wp_update_post( $post );
@@ -156,6 +168,15 @@ function hos_remove_shortcode( $id, $key, $raw ) {
 	$post = get_post( $id, ARRAY_A );
 	$post['post_content'] = str_replace( $raw, '', $post['post_content'] );
 	wp_update_post( $post );
+	$shortcode_log = get_option( 'hos_hidden_shortcodes', array() );
+	unset( $shortcode_log[ $key ] );
+	update_option( 'hos_hidden_shortcodes', $shortcode_log );
+}
+
+function hos_ignore_shortcode( $id, $key, $raw  ) {
+	$ignored_shortcodes = get_option( 'hos_ignored_shortcodes', array() );
+	$ignored_shortcodes[ $key ] = $raw;
+	update_option( 'hos_ignored_shortcodes',  $ignored_shortcodes );
 	$shortcode_log = get_option( 'hos_hidden_shortcodes', array() );
 	unset( $shortcode_log[ $key ] );
 	update_option( 'hos_hidden_shortcodes', $shortcode_log );
