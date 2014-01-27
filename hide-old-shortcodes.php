@@ -2,11 +2,13 @@
 /*
 Plugin Name: Hide Old Shortcodes
 Description: This plugin hides old/non registered shortcodes on the front end from users. It also helps you locate them so you can remove them.
-Version: 0.2
+Version: 0.3
 Author: Mike Hansen
 Author URI: http://mikehansen.me
 License: GPLv2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
+GitHub Plugin URI: https://github.com/MikeHansenMe/hide-old-shortcodes
+GitHub Branch: master
 */
 
 function hos_return_all_shortcodes_regex() {
@@ -159,25 +161,42 @@ function hos_escape_shortcode( $id, $key, $raw ) {
 	$post = get_post( $id, ARRAY_A );
 	$post['post_content'] = str_replace( $raw, '[' . $raw . ']', $post['post_content'] );
 	wp_update_post( $post );
-	hos_remove_from_log( $key );
+	$shortcode_log = get_option( 'hos_hidden_shortcodes', array() );
+	unset( $shortcode_log[ $key ] );
+	update_option( 'hos_hidden_shortcodes', $shortcode_log );
 }
 
 function hos_remove_shortcode( $id, $key, $raw ) {
 	$post = get_post( $id, ARRAY_A );
 	$post['post_content'] = str_replace( $raw, '', $post['post_content'] );
 	wp_update_post( $post );
-	hos_remove_from_log( $key );
+	$shortcode_log = get_option( 'hos_hidden_shortcodes', array() );
+	unset( $shortcode_log[ $key ] );
+	update_option( 'hos_hidden_shortcodes', $shortcode_log );
 }
 
 function hos_ignore_shortcode( $id, $key, $raw  ) {
 	$ignored_shortcodes = get_option( 'hos_ignored_shortcodes', array() );
 	$ignored_shortcodes[ $key ] = $raw;
 	update_option( 'hos_ignored_shortcodes',  $ignored_shortcodes );
-	hos_remove_from_log( $key );
-}
-
-function hos_remove_from_log( $key ) {
 	$shortcode_log = get_option( 'hos_hidden_shortcodes', array() );
 	unset( $shortcode_log[ $key ] );
 	update_option( 'hos_hidden_shortcodes', $shortcode_log );
+}
+
+// Load base classes for github updater
+if ( is_admin() ) {
+	/**
+	 * Check class_exist because this could be loaded in a different plugin
+	 */
+	if( ! class_exists( 'GitHub_Updater' ) ) { 
+		require_once( plugin_dir_path( __FILE__ ) . 'updater/class-github-updater.php' );
+	}
+	if( ! class_exists( 'GitHub_Updater_GitHub_API' ) ) {
+		require_once( plugin_dir_path( __FILE__ ) . 'updater/class-github-api.php' );
+	}
+	if( ! class_exists( 'GitHub_Plugin_Updater' ) ) {
+		require_once( plugin_dir_path( __FILE__ ) . 'updater/class-plugin-updater.php' );
+	}
+	new GitHub_Plugin_Updater;
 }
