@@ -184,19 +184,23 @@ function hos_ignore_shortcode( $id, $key, $raw  ) {
 	update_option( 'hos_hidden_shortcodes', $shortcode_log );
 }
 
-// Load base classes for github updater
-if ( is_admin() ) {
-	/**
-	 * Check class_exist because this could be loaded in a different plugin
-	 */
-	if( ! class_exists( 'GitHub_Updater' ) ) { 
-		require_once( plugin_dir_path( __FILE__ ) . 'updater/class-github-updater.php' );
+function hos_load_updater() {
+	// Load base classes for github updater
+	if ( is_admin() ) {
+		/*
+		Check class_exist because this could be loaded in a different plugin
+		*/
+		if( ! class_exists( 'GitHub_Updater' ) ) { 
+			require_once( plugin_dir_path( __FILE__ ) . 'updater/class-github-updater.php' );
+		}
+		if( ! class_exists( 'GitHub_Updater_GitHub_API' ) ) {
+			require_once( plugin_dir_path( __FILE__ ) . 'updater/class-github-api.php' );
+		}
+		if( ! class_exists( 'GitHub_Plugin_Updater' ) ) {
+			require_once( plugin_dir_path( __FILE__ ) . 'updater/class-plugin-updater.php' );
+		}
+		new GitHub_Plugin_Updater;
 	}
-	if( ! class_exists( 'GitHub_Updater_GitHub_API' ) ) {
-		require_once( plugin_dir_path( __FILE__ ) . 'updater/class-github-api.php' );
-	}
-	if( ! class_exists( 'GitHub_Plugin_Updater' ) ) {
-		require_once( plugin_dir_path( __FILE__ ) . 'updater/class-plugin-updater.php' );
-	}
-	new GitHub_Plugin_Updater;
 }
+add_action( 'admin_head-plugins.php', 'hos_load_updater' );
+add_action( 'admin_head-update-core.php', 'hos_load_updater' );
