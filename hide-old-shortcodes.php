@@ -4,7 +4,7 @@ Plugin Name: Hide Old Shortcodes
 Description: This plugin hides old/non registered shortcodes on the front end from users. It also helps you locate them so you can remove them.
 Version: 0.3.3
 Author: Mike Hansen
-Author URI: http://mikehansen.me
+Author URI: http://mikehansen.me?utm_campaign=plugin&utm_source=hos_wp_plugin
 License: GPLv2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
 GitHub Plugin URI: https://github.com/MikeHansenMe/hide-old-shortcodes
